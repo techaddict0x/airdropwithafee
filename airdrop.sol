@@ -1,8 +1,4 @@
-/**
- *Submitted for verification at BscScan.com on 2023-05-17
-*/
-
-//SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8;
 pragma experimental ABIEncoderV2;
 
@@ -41,19 +37,16 @@ interface IERC20 {
 }
 
 contract Context {
-    // Empty internal constructor, to prevent people from mistakenly deploying
-    // an instance of this contract, which should be used via inheritance.
     function _msgSender() internal view returns (address) {
         return msg.sender;
     }
 
     function _msgData() internal view returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+        this;
         return msg.data;
     }
 }
 
-/* --------- Access Control --------- */
 contract Ownable is Context {
     address private _owner;
 
@@ -116,28 +109,29 @@ contract Airdrop is Claimable {
     IERC20 public token;
 
     uint256 airDropAmount = 1 * 10**18;
-    uint256 feeAmount = 1 * 10**15;
+    uint256 feeAmount = 597500000000000; // 0.0005975 in Wei
+
+    mapping(address => bool) public hasClaimed;
 
     constructor(address _tokenAddress) {
         token = IERC20(_tokenAddress);
     }
 
-    function deposit(uint256 _amount) public {
-        require(
-            token.transferFrom(msg.sender, address(this), _amount),
-            "deposit failed"
-        );
-    }
+    function claim() public payable {
+        require(msg.value >= feeAmount, "Insufficient fee.");
 
-    function withdraw(uint256 _amount) public onlyOwner {
-        require(token.transfer(msg.sender, _amount), "withdraw failed");
-    }
+        address claimer = msg.sender;
 
-    function airdrop() public payable{
-        require(msg.value >= feeAmount, "Fee is very small.");
-        require(token.transfer(msg.sender, airDropAmount), "airdrop failed");
+        require(!hasClaimed[claimer], "Already claimed.");
+
+        require(token.transfer(claimer, airDropAmount), "Airdrop failed");
+        
+        hasClaimed[claimer] = true;
+
         (bool sent, ) = owner().call{value: msg.value}("");
-
+        require(sent, "Failed to send Ether");
+        
+        emit Claim(claimer, airDropAmount);
     }
 
     receive() external payable {}
